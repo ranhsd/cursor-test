@@ -1,0 +1,65 @@
+flowchart TB
+    User["End User<br/>(Web Browser)"]
+
+    subgraph CLOUD["CLOUD - SAP Business Technology Platform (BTP)"]
+        direction TB
+
+        subgraph EDGE["Entry / Security Layer"]
+            CDOM["Custom Domain / CDN"]
+            IAS["SAP Cloud Identity Services<br/>(IAS - Authentication)"]
+            XSUAA["XSUAA / Authorization<br/>(Roles &amp; Scopes)"]
+        end
+
+        subgraph APPLAYER["Application Layer"]
+            APPROUTER["Approuter /<br/>Launchpad Module"]
+            HTML5REPO["HTML5 Application<br/>Repository Service<br/>(hosts the Web App)"]
+            WEBAPP["Web App<br/>(SAPUI5 / Fiori / SPA)"]
+        end
+
+        subgraph BTPSERVICES["BTP Platform Services"]
+            WZ["SAP Build Work Zone<br/>Standard Edition<br/>(Site &amp; Navigation APIs<br/>builds user links)"]
+            DEST["Destination Service<br/>(endpoint config &amp; auth)"]
+            CONN["Connectivity Service<br/>(secure tunnel proxy)"]
+        end
+    end
+
+    subgraph ONPREM["ON-PREMISE - Customer Landscape"]
+        direction TB
+        CC["SAP Cloud Connector<br/>(secure reverse-proxy agent)"]
+        FW["Firewall / Reverse Proxy"]
+        UMBRACO["Umbraco Headless CMS<br/>(Content Delivery API)"]
+        UMBDB[("Umbraco Database<br/>(Content Store)")]
+    end
+
+    %% User flow
+    User -->|HTTPS| CDOM
+    CDOM --> APPROUTER
+    APPROUTER -->|authenticate| IAS
+    APPROUTER -->|authorize| XSUAA
+    APPROUTER -->|serves static content| HTML5REPO
+    HTML5REPO --> WEBAPP
+
+    %% Work Zone (links / navigation)
+    WEBAPP -->|"1 fetch navigation / links (REST/OData)"| WZ
+
+    %% Umbraco content via destination + cloud connector
+    WEBAPP -->|"2 request CMS content"| DEST
+    DEST --> CONN
+    CONN -->|"encrypted TLS tunnel"| CC
+
+    %% On-prem resolution
+    CC --> FW
+    FW --> UMBRACO
+    UMBRACO --> UMBDB
+
+    %% Return content
+    UMBRACO -.->|content JSON| WEBAPP
+    WZ -.->|links / tiles| WEBAPP
+    WEBAPP -.->|rendered UI| User
+
+    classDef cloud fill:#e6f2ff,stroke:#0070f2,stroke-width:1px,color:#003;
+    classDef onprem fill:#fff2e6,stroke:#e76500,stroke-width:1px,color:#330;
+    classDef sec fill:#eafaf1,stroke:#188a42,stroke-width:1px,color:#032;
+    class WZ,DEST,CONN,APPROUTER,HTML5REPO,WEBAPP,CDOM cloud;
+    class CC,FW,UMBRACO,UMBDB onprem;
+    class IAS,XSUAA sec;

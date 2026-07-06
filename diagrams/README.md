@@ -14,6 +14,7 @@ The diagram explicitly separates the **Cloud (SAP BTP)** and **On-Premise (Custo
 - `btp-workzone-umbraco-architecture.mmd` – Mermaid source (edit this).
 - `btp-workzone-umbraco-architecture.svg` – Vector export.
 - `btp-workzone-umbraco-architecture.png` – Raster export (3x scale).
+- `IMPLEMENTATION_GUIDE.md` – Step-by-step guide for developers to read the diagram and implement it.
 
 ## Regenerate
 

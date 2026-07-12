@@ -43,6 +43,9 @@ export default {
     script.src = scriptConfig.src;
     script.async = true;
     script.setAttribute('data-clsconfig', buildDataClsConfig(scriptConfig.reportURI));
+    script.onload = () => {
+      window._detector?.plugins?.resourceRecorderPlugin?.startRecordingAll();
+    };
     document.head.appendChild(script);
   },
 };

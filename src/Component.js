@@ -1,4 +1,6 @@
-sap.ui.define([], function () {
+sap.ui.define([
+  "sap/ui/core/UIComponent",
+], function (UIComponent) {
   "use strict";
 
   const SCRIPT_CONFIG = {
@@ -20,11 +22,14 @@ sap.ui.define([], function () {
     "merkava.mrd.gov.il": { env: "dev", allowedPorts: [443] },
   };
 
-  return {
-    /**
-     * Call this from your Component.js init() method.
-     */
+  return UIComponent.extend("your.app.Component", {
+
     init: function () {
+      UIComponent.prototype.init.apply(this, arguments);
+      this._initGlassbox();
+    },
+
+    _initGlassbox: function () {
       const config = HOST_CONFIG[window.location.hostname] ?? null;
 
       if (!config) return; // not an external host, disable Glassbox
@@ -43,10 +48,13 @@ sap.ui.define([], function () {
       script.src = scriptConfig.src;
       script.async = true;
       script.setAttribute("data-clsconfig", scriptConfig.dataClsConfig);
-      script.onload = function () {
-        window._detector?.plugins?.resourceRecorderPlugin?.startRecordingAll();
-      };
+      script.onload = this._onGlassboxLoaded.bind(this);
       document.head.appendChild(script);
     },
-  };
+
+    _onGlassboxLoaded: function () {
+      window._detector?.plugins?.resourceRecorderPlugin?.startRecordingAll();
+    },
+
+  });
 });

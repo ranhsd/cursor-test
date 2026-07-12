@@ -1,25 +1,24 @@
 const HOST_CONFIG = {
-  'merkava.mrp.gov.il': import.meta.env.VITE_GLASSBOX_SITE_ID_PROD,
-  'merkava.mrq.gov.il': import.meta.env.VITE_GLASSBOX_SITE_ID_DEV,
-  'merkava.mrd.gov.il': import.meta.env.VITE_GLASSBOX_SITE_ID_DEV,
+  'merkava.mrp.gov.il': { siteId: import.meta.env.VITE_GLASSBOX_SITE_ID_PROD, allowedPorts: [443] },
+  'merkava.mrq.gov.il': { siteId: import.meta.env.VITE_GLASSBOX_SITE_ID_DEV, allowedPorts: [443] },
+  'merkava.mrd.gov.il': { siteId: import.meta.env.VITE_GLASSBOX_SITE_ID_DEV, allowedPorts: [443] },
 };
-
-const DEFAULT_PORT = '443';
 
 export default {
   install(app) {
     if (typeof window === 'undefined') return;
 
-    const siteId = HOST_CONFIG[window.location.hostname] ?? null;
+    const config = HOST_CONFIG[window.location.hostname] ?? null;
 
-    if (!siteId) return; // not an external host, disable Glassbox
+    if (!config) return; // not an external host, disable Glassbox
 
     // window.location.port is an empty string when the browser uses the
-    // protocol's default port, so treat empty as the default (443).
-    const port = window.location.port || DEFAULT_PORT;
-    if (port !== DEFAULT_PORT) return; // non-standard port, disable Glassbox
+    // protocol's default port (443 for HTTPS), so fall back to 443.
+    const port = parseInt(window.location.port || '443', 10);
 
-    window._cls_cfg = { siteId };
+    if (!config.allowedPorts.includes(port)) return; // port not allowed, disable Glassbox
+
+    window._cls_cfg = { siteId: config.siteId };
 
     const script = document.createElement('script');
     script.src = 'https://cdn.glassbox.com/gb-recorder.js';

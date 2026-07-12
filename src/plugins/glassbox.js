@@ -1,13 +1,11 @@
 const SCRIPT_CONFIG = {
   prod: {
-    src: 'https://cdn.gbqofs.com/finance_ministry/p/detector-dom.min.js',
-    dataClsConfig:
-      'reportURI=https://report.gb-pov.gbqofs.io/rcqgqx3o/reporting/e9d834e4-f152-3379-c79c-046534ed1eab/cls_report;recordErrors=true;recordScrolls=true;recordMouseMoves=true;',
+    src: import.meta.env.VITE_GLASSBOX_SCRIPT_SRC_PROD,
+    reportURI: import.meta.env.VITE_GLASSBOX_REPORT_URI_PROD,
   },
   dev: {
-    src: 'https://cdn.gbqofs.com/finance_ministry/u/detector-dom.min.js',
-    dataClsConfig:
-      'reportURI=https://report.gb-pov.gbqofs.io/rcqgqx3o/reporting/23a92793-1e3c-7ef8-2ef7-bee054652f9f/cls_report;recordErrors=true;recordScrolls=true;recordMouseMoves=true;',
+    src: import.meta.env.VITE_GLASSBOX_SCRIPT_SRC_DEV,
+    reportURI: import.meta.env.VITE_GLASSBOX_REPORT_URI_DEV,
   },
 };
 
@@ -16,6 +14,10 @@ const HOST_CONFIG = {
   'merkava.mrq.gov.il': { env: 'dev', allowedPorts: [443] },
   'merkava.mrd.gov.il': { env: 'dev', allowedPorts: [443] },
 };
+
+function buildDataClsConfig(reportURI) {
+  return `reportURI=${reportURI};recordErrors=true;recordScrolls=true;recordMouseMoves=true;`;
+}
 
 export default {
   install(app) {
@@ -33,12 +35,14 @@ export default {
 
     const scriptConfig = SCRIPT_CONFIG[config.env];
 
+    if (!scriptConfig.src || !scriptConfig.reportURI) return; // env vars not set, disable Glassbox
+
     const script = document.createElement('script');
     script.type = 'text/javascript';
     script.id = '_cls_detector';
     script.src = scriptConfig.src;
     script.async = true;
-    script.setAttribute('data-clsconfig', scriptConfig.dataClsConfig);
+    script.setAttribute('data-clsconfig', buildDataClsConfig(scriptConfig.reportURI));
     document.head.appendChild(script);
   },
 };

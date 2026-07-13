@@ -1,0 +1,102 @@
+version: 2
+plan:
+  project-key: VUE3
+  key: VUEBUILD
+  name: VUE3-Vendors-Portal-Mobile-CI
+
+# 1. Just list the Linked Repository name
+repositories:
+  - Vendors Portal Mobile
+
+# 2. This restricts the build so it ONLY runs when a pull request is created
+#    against the linked repository (no plan branch is created for plain
+#    feature-branch pushes that aren't part of a PR).
+branches:
+  create: for-pull-requests
+  delete:
+    after-inactivity: 7
+  integrate-pr: true
+
+# 3. Stages and Tasks
+stages:
+  - Build Stage:
+      jobs:
+        - Build Job
+
+Build Job:
+  key: JOB1
+  tasks:
+    - checkout:
+        repository: Vendors Portal Mobile
+        force-clean-build: true
+
+    # Task 1: Setup Git Auth
+    - script:
+        description: Setup Git Auth
+        interpreter: SHELL
+        scripts:
+          - sed -i '/mdxbbkt01.dev.merkava.gov.il/d' ~/.gitconfig || true
+          - git config --global url."https://isranh:${bamboo_gitTokenSecret}@mdxbbkt01.dev.merkava.gov.il:8443/scm/".insteadOf "https://mdxbbkt01.dev.merkava.gov.il:8443/scm/"
+          - echo "Git config updated for user isranh"
+
+    # Task 2: npm Install
+    - script:
+        description: npm Install
+        interpreter: SHELL
+        scripts:
+          - rm -rf node_modules
+          - rm -f package-lock.json
+          - rm -rf /root/.npm/_cacache
+          - npm install -f --no-audit --progress=false --prefer-online
+
+    # Task 3: ESLint
+    - script:
+        description: ESLint Check
+        interpreter: SHELL
+        scripts:
+          - |
+            echo "Running ESLint..."
+            npx eslint . --ext .js,.jsx,.vue --format junit --output-file eslint-results.xml --max-warnings 5
+            ESLINT_STATUS=$?
+            if [ ${ESLINT_STATUS} -ne 0 ]; then
+              echo "❌ ESLint failed! Fix the errors above before building."
+              exit ${ESLINT_STATUS}
+            fi
+            echo "✅ ESLint passed."
+
+    # Task 4: Build Vue App
+    - script:
+        description: npm Build
+        interpreter: SHELL
+        scripts:
+          - npm run build
+
+    # Task 5: Deploy App to SAP UI5 (WITH PROPER ERROR HANDLING)
+    - script:
+        description: Deploy to SAP
+        interpreter: SHELL
+        scripts:
+          - |
+            echo "Preparing deployment environment..."
+
+            # --- DEBUGGING ONLY: REMOVE BEFORE PRODUCTION ---
+            echo "DEBUG: Injecting Username: '${bamboo_sapDeployUserEDF}'"
+            echo "DEBUG: Injecting Password: '${bamboo_sapDeployPasswordSecretEDF}'"
+            # ------------------------------------------------
+
+            printf "FIORI_TOOLS_USERNAME_EDF=\"%s\"\n" "${bamboo_sapDeployUserEDF}" > .env
+            printf "FIORI_TOOLS_PASSWORD_EDF=\"%s\"\n" "${bamboo_sapDeployPasswordSecretEDF}" >> .env
+
+            set +e
+            npm run deploy:edf
+
+#  final-tasks:
+#    - test-results-parser:
+#        type: junit
+#        test-results: "**/eslint-results.xml"
+
+  artifacts:
+    - name: vendors-portal-mobile-dist
+      location: dist
+      pattern: "**/*"
+      shared: true
